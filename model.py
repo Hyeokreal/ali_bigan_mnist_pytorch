@@ -54,6 +54,7 @@ class P(nn.Module):
         self.deconv3 = nn.ConvTranspose2d(d * 4, d * 2, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d * 2)
         self.deconv4 = nn.ConvTranspose2d(d * 2, 1, 4, 2, 1)
+        self.weight_init(mean=0.0, std=0.02)
 
     def weight_init(self, mean, std):
         for m in self._modules:
