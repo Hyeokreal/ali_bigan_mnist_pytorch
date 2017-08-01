@@ -13,8 +13,8 @@ batch_size = 100
 z_dim = 100
 x_dim = 32
 sample_size = 100
-glr = 0.001
-dlr = 0.001
+glr = 0.0001
+dlr = 0.0001
 log_step = 1
 sample_step = 200
 sample_path = './samples'
@@ -153,31 +153,31 @@ for epoch in range(num_epochs):
 
         d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
 
-        # for p in gx.parameters():
-        #     p.requires_grad = False
-        # for p in gz.parameters():
-        #     p.requires_grad = False
-        # for p in dxz.parameters():
-        #     p.requires_grad = True
+        for p in gx.parameters():
+            p.requires_grad = False
+        for p in gz.parameters():
+            p.requires_grad = False
+        for p in dxz.parameters():
+            p.requires_grad = True
 
-        # dxz.zero_grad()
-        d_optimizer.zero_grad()
+        dxz.zero_grad()
+        # d_optimizer.zero_grad()
         d_loss.backward(retain_variables=True)
         d_optimizer.step()
 
         # g_loss = torch.mean(softplus(d_enc) + softplus(-d_gen))
         g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
-        #
-        # for p in gx.parameters():
-        #     p.requires_grad = True
-        # for p in gz.parameters():
-        #     p.requires_grad = True
-        # for p in dxz.parameters():
-        #     p.requires_grad = False
 
-        # gx.zero_grad()
-        # gz.zero_grad()
-        g_optimizer.zero_grad()
+        for p in gx.parameters():
+            p.requires_grad = True
+        for p in gz.parameters():
+            p.requires_grad = True
+        for p in dxz.parameters():
+            p.requires_grad = False
+
+        gx.zero_grad()
+        gz.zero_grad()
+        # g_optimizer.zero_grad()
         g_loss.backward()
         g_optimizer.step()
 
