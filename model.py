@@ -100,10 +100,12 @@ class Q(nn.Module):
         self.conv2_bn = nn.BatchNorm2d(d * 4)
         self.conv3 = nn.Conv2d(d * 4, d * 8, 4, 2, 1)
         self.conv3_bn = nn.BatchNorm2d(d * 8)
-        self.conv4 = nn.Conv2d(d * 8, d * 8, 5, 2, 1)
+        self.conv4 = nn.Conv2d(d * 8, z_dim * 2, 5, 2, 1)
+        # self.conv4_bn = nn.BatchNorm2d(z_dim * 8)
+        # self.conv5 = nn.Conv2d()
 
-        self.mu = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
-        self.sigma = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
+        # self.mu = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
+        # self.sigma = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -112,7 +114,7 @@ class Q(nn.Module):
                 m.weight.data.normal_(1.0, std)
                 m.bias.data.zero_()
 
-        # self.weight_init(mean=0.0, std=0.02)
+                # self.weight_init(mean=0.0, std=0.02)
 
     def get_e(self):
         return torch.randn([batch, z_dim, 1, 1])
@@ -122,20 +124,24 @@ class Q(nn.Module):
             normal_init(self._modules[m], mean, std)
 
     def forward(self, x):
+        # print("q x in size : ", x.size())
         out = F.leaky_relu(self.conv1_bn(self.conv1(x)))
+        # print("q shape: ", out.size())
         out = F.leaky_relu(self.conv2_bn(self.conv2(out)))
+        # print("q shape: ", out.size())
         out = F.leaky_relu(self.conv3_bn(self.conv3(out)))
+        # print("q shape: ", out.size())
         out = self.conv4(out)
-        # print("out: ", out.size())
-        mu = self.mu(out)
+        # print("q shape: ", out.size())
+        # mu = self.mu(out)
         # print("mu: ", mu.size())
-        sig = self.sigma(out)
+        # sig = self.sigma(out)
         # print("sig: ", sig.size())
-        e = Variable(self.get_e())
-        e.requires_grad = False
-        log_sig = torch.exp(sig / 2) * e
+        # e = Variable(self.get_e())
+        # e.requires_grad = False
+        # log_sig = torch.exp(sig) * e
 
-        out = mu + log_sig
+        # out = mu + log_sig
 
         # out = F.sigmoid(self.conv4_bn(self.conv4(out)))
         # print("q shape out", out.size())
@@ -149,6 +155,7 @@ class D(nn.Module):
 
         # dx part
         self.dx_conv1 = nn.Conv2d(1, 32, 5, 1, 0)
+        self.dx_conv1_bn = nn.BatchNorm2d(32)
         self.dx_conv2 = nn.Conv2d(32, 64, 4, 2, 0)
         self.dx_conv2_bn = nn.BatchNorm2d(64)
         self.dx_conv3 = nn.Conv2d(64, 128, 4, 2, 0)
@@ -166,14 +173,13 @@ class D(nn.Module):
         self.dxz_conv2 = nn.Conv2d(512, 512, 1, 1, 0)
         self.dxz_conv3 = nn.Conv2d(512, 1, 1, 1, 0)
 
-
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 m.weight.data.normal_(0.0, std)
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.normal_(1.0, std)
                 m.bias.data.zero_()
-        # self.weight_init(mean=0.0, std=0.02)
+                # self.weight_init(mean=0.0, std=0.02)
 
     def weight_init(self, mean, std):
         for m in self._modules:
@@ -183,7 +189,7 @@ class D(nn.Module):
     def forward(self, x, z):
         # dx forward
         # print("dx input: ", x.size())
-        dx = F.leaky_relu(self.dx_conv1(x), 0.2)
+        dx = F.leaky_relu(self.dx_conv1_bn(self.dx_conv1(x)), 0.2)
         # print("dx shape 1: ", dx.size())
         dx = F.leaky_relu(self.dx_conv2_bn(self.dx_conv2(dx)), 0.2)
         # print("dx shape 2: ", dx.size())
@@ -202,14 +208,14 @@ class D(nn.Module):
         # dxz forward
         xz = torch.cat((dx, dz), 1)
         # print("dxz input : ", xz.size())
-        dxz = F.leaky_relu(self.dxz_conv1(xz))
+        dxz = F.leaky_relu(self.dxz_conv1(xz), 0.2)
         # print("dxz input : ", dxz.size())
-        dxz = F.leaky_relu(self.dxz_conv2(dxz))
+        dxz = F.leaky_relu(self.dxz_conv2(dxz), 0.2)
         # print("dxz input : ", dxz.size())
         dxz = self.dxz_conv3(dxz)
         # print("dxz out : ", dxz.size())
 
-        return dxz
+        return F.sigmoid(dxz)
 
 
 '''

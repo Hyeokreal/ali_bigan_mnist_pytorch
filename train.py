@@ -13,8 +13,8 @@ batch_size = 100
 z_dim = 100
 x_dim = 32
 sample_size = 100
-glr = 0.000001
-dlr = 0.000002
+glr = 0.001
+dlr = 0.001
 log_step = 1
 sample_step = 200
 sample_path = './samples'
@@ -50,7 +50,6 @@ g_param = chain(gx.parameters(), gz.parameters())
 d_param = dxz.parameters()
 
 g_optimizer = optim.Adam(g_param, glr, betas=(0.5, 0.999))
-
 d_optimizer = optim.Adam(d_param, glr, betas=(0.5, 0.999))
 
 
@@ -80,6 +79,10 @@ def denorm(x):
     return out.clamp(0, 1)
 
 
+def softplus(_x):
+    return torch.log(1.0 + torch.exp(_x))
+
+
 fixed_noise = to_variable(torch.randn(batch_size, z_dim))
 fixed_noise = fixed_noise.view([-1, z_dim, 1, 1])
 total_step = len(train_loader)
@@ -87,17 +90,58 @@ total_step = len(train_loader)
 # ones_label = Variable(torch.ones(batch_size))
 # zeros_label = Variable(torch.zeros(batch_size))
 
+'''
+def compute_loss(batch_size, d_loss=False):
+    z_hat = netGz(x)
+    mu, sigma = z_hat[:, :opt.nz], z_hat[:, opt.nz:].exp()
+
+    z_hat = mu + sigma * noise.expand_as(sigma)
+    x_hat = netGx(z)
+
+    data_preds = netDxz(torch.cat([netDx(x), netDz(z_hat)], 1)) + eps
+    sample_preds = netDxz(torch.cat([netDx(x_hat), netDz(z)], 1)) + eps
+
+    if d_loss:
+        # discriminator loss
+        loss = torch.mean(softplus(-data_preds) + softplus(sample_preds))
+    else:
+        # generator loss
+        loss = torch.mean(softplus(data_preds) + softplus(-sample_preds))
+
+    return lossdef compute_loss(batch_size, d_loss=False):
+    z_hat = netGz(x)
+    mu, sigma = z_hat[:, :opt.nz], z_hat[:, opt.nz:].exp()
+
+    z_hat = mu + sigma * noise.expand_as(sigma)
+    x_hat = netGx(z)
+
+    data_preds = netDxz(torch.cat([netDx(x), netDz(z_hat)], 1)) + eps
+    sample_preds = netDxz(torch.cat([netDx(x_hat), netDz(z)], 1)) + eps
+
+    if d_loss:
+        # discriminator loss
+        loss = torch.mean(softplus(-data_preds) + softplus(sample_preds))
+    else:
+        # generator loss
+        loss = torch.mean(softplus(data_preds) + softplus(-sample_preds))
+
+    return loss
+'''
+
 for epoch in range(num_epochs):
-    gx.train(), gz.train()
-    dxz.train()
+
     for i, (x, _) in enumerate(train_loader):
 
         x = to_variable(x)
         z = to_variable(torch.randn(batch_size, z_dim))
         z = z.view(-1, z_dim, 1, 1)
+        noise_ = to_variable(torch.randn(batch_size, z_dim))
+        noise = noise_.view(-1, z_dim, 1, 1)
 
         x_hat = gx.forward(z)
         z_hat = gz.forward(x)
+        mu, sigma = z_hat[:, :z_dim], z_hat[:, z_dim:].exp()
+        z_hat = mu + sigma * noise
 
         d_enc = dxz.forward(x, z_hat)
         d_gen = dxz.forward(x_hat, z)
@@ -105,37 +149,31 @@ for epoch in range(num_epochs):
         d_enc_sum = torch.mean(d_enc)
         d_gen_sum = torch.mean(d_gen)
 
-        d_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
+        # d_loss = torch.mean(softplus(-d_enc) + softplus(d_gen))
 
-        for p in gx.parameters():
-            p.requires_grad = False
-        for p in gz.parameters():
-            p.requires_grad = False
-        for p in dxz.parameters():
-            p.requires_grad = True
+        d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+
+        # for p in gx.parameters():
+        #     p.requires_grad = False
+        # for p in gz.parameters():
+        #     p.requires_grad = False
+        # for p in dxz.parameters():
+        #     p.requires_grad = True
 
         # dxz.zero_grad()
         d_optimizer.zero_grad()
-        d_loss.backward()
+        d_loss.backward(retain_variables=True)
         d_optimizer.step()
 
-        z = to_variable(torch.randn(batch_size, z_dim))
-        z = z.view(-1, z_dim, 1, 1)
-
-        x_hat = gx.forward(z)
-        z_hat = gz.forward(x)
-
-        d_enc = dxz.forward(x, z_hat)
-        d_gen = dxz.forward(x_hat, z)
-
-        g_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
-
-        for p in gx.parameters():
-            p.requires_grad = True
-        for p in gz.parameters():
-            p.requires_grad = True
-        for p in dxz.parameters():
-            p.requires_grad = False
+        # g_loss = torch.mean(softplus(d_enc) + softplus(-d_gen))
+        g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
+        #
+        # for p in gx.parameters():
+        #     p.requires_grad = True
+        # for p in gz.parameters():
+        #     p.requires_grad = True
+        # for p in dxz.parameters():
+        #     p.requires_grad = False
 
         # gx.zero_grad()
         # gz.zero_grad()
@@ -160,7 +198,10 @@ for epoch in range(num_epochs):
         # save the sampled images recon
         if (i) % sample_step == 0:
             fake_z = gz.forward(x)
+            mu, sigma = fake_z[:, :z_dim], fake_z[:, z_dim:].exp()
+            fake_z = mu + sigma * noise
             fake_x = gx.forward(fake_z)
+
             torchvision.utils.save_image(denorm(fake_x.data),
                                          os.path.join(sample_path,
                                                       'recon_samples-%d-%d.png' % (
