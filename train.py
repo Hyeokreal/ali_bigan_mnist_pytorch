@@ -5,6 +5,7 @@ import torchvision
 import os
 from torch import optim
 from torch.autograd import Variable
+from itertools import chain
 from model import P, Q, D
 
 num_epochs = 20
@@ -15,9 +16,15 @@ sample_size = 100
 glr = 0.000001
 dlr = 0.000002
 log_step = 1
-sample_step = 50
+sample_step = 200
 sample_path = './samples'
 model_path = './models'
+
+if not os.path.isdir(sample_path):
+    os.mkdir(sample_path)
+
+if not os.path.isdir(model_path):
+    os.mkdir(model_path)
 
 img_size = 32
 transform = transforms.Compose([
@@ -35,13 +42,17 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=batch_size,
                                            shuffle=True)
 
+
 gx = P()
 gz = Q()
 dxz = D()
 
-g_optimizer = optim.Adam(list(gx.parameters()) + list(gz.parameters()), glr, betas=(0.5, 0.999))
+g_param = chain(gx.parameters(), gz.parameters())
+d_param = dxz.parameters()
 
-d_optimizer = optim.Adam(dxz.parameters(), glr, betas=(0.5, 0.999))
+g_optimizer = optim.Adam(g_param, glr, betas=(0.5, 0.999))
+
+d_optimizer = optim.Adam(d_param, glr, betas=(0.5, 0.999))
 
 
 def to_variable(x):
@@ -70,23 +81,6 @@ def denorm(x):
     return out.clamp(0, 1)
 
 
-'''
-def sample():
-    g_path = os.path.join(model_path, 'gxz-%d.pkl' % (num_epochs))
-    d_path = os.path.join(model_path, 'discriminator-%d.pkl' % (num_epochs))
-    generator.load_state_dict(torch.load(g_path))
-    discriminator.load_state_dict(torch.load(d_path))
-    generator.eval()
-    discriminator.eval()
-
-    # Sample the images
-    noise = to_variable(torch.randn(sample_size, z_dim))
-    fake_images = generator(noise)
-    sample = os.path.join(sample_path, 'fake_samples-final.png')
-    torchvision.utils.save_image(denorm(fake_images.data), sample, nrow=12)
-    print("Saved sampled images to '%s'" % sample)
-'''
-
 fixed_noise = to_variable(torch.randn(batch_size, z_dim))
 fixed_noise = fixed_noise.view([-1, z_dim, 1, 1])
 total_step = len(train_loader)
@@ -108,21 +102,27 @@ for epoch in range(num_epochs):
         d_gen = dxz.forward(x_hat, z)
 
         d_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
-        reset_grad()
+        g_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+
+        for p in gx.parameters():
+            p.requires_grad = False
+        for p in gz.parameters():
+            p.requires_grad = False
+        for p in dxz.parameters():
+            p.requires_grad = True
+
+        d_optimizer.zero_grad()
         d_loss.backward()
         d_optimizer.step()
 
-        z = to_variable(torch.randn(batch_size, z_dim))
-        z = z.view(-1, z_dim, 1, 1)
+        for p in gx.parameters():
+            p.requires_grad = True
+        for p in gz.parameters():
+            p.requires_grad = True
+        for p in dxz.parameters():
+            p.requires_grad = False
 
-        x_hat = gx.forward(z)
-        z_hat = gz.forward(x)
-
-        d_enc = dxz.forward(x, z_hat)
-        d_gen = dxz.forward(x_hat, z)
-
-        g_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
-        reset_grad()
+        g_optimizer.zero_grad()
         g_loss.backward()
         g_optimizer.step()
 

@@ -11,6 +11,13 @@ x_dim = 32
 
 batch = 100
 
+'''
+init
+
+nninit.xavier_uniform(self.conv1.weight, gain=np.sqrt(2))
+nninit.constant(self.conv1.bias, 0.1)
+'''
+
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
