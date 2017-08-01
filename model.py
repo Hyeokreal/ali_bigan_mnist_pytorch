@@ -11,6 +11,8 @@ x_dim = 32
 
 batch = 100
 
+std = 0.01
+
 '''
 init
 
@@ -52,6 +54,7 @@ def linear(l_in, l_out, bn=True):
 # gx
 class P(nn.Module):
     def __init__(self, d=16):
+
         super(P, self).__init__()
         self.deconv1 = nn.ConvTranspose2d(z_dim, d * 8, 4, 1, 0)
         self.deconv1_bn = nn.BatchNorm2d(d * 8)
@@ -60,7 +63,15 @@ class P(nn.Module):
         self.deconv3 = nn.ConvTranspose2d(d * 4, d * 2, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d * 2)
         self.deconv4 = nn.ConvTranspose2d(d * 2, 1, 4, 2, 1)
-        self.weight_init(mean=0.0, std=0.02)
+
+        # self.weight_init(mean=0.0, std=0.02)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
 
     def weight_init(self, mean, std):
         for m in self._modules:
@@ -93,7 +104,15 @@ class Q(nn.Module):
 
         self.mu = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
         self.sigma = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
-        self.weight_init(mean=0.0, std=0.02)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
+
+        # self.weight_init(mean=0.0, std=0.02)
 
     def get_e(self):
         return torch.randn([batch, z_dim, 1, 1])
@@ -147,7 +166,14 @@ class D(nn.Module):
         self.dxz_conv2 = nn.Conv2d(512, 512, 1, 1, 0)
         self.dxz_conv3 = nn.Conv2d(512, 1, 1, 1, 0)
 
-        self.weight_init(mean=0.0, std=0.02)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
+        # self.weight_init(mean=0.0, std=0.02)
 
     def weight_init(self, mean, std):
         for m in self._modules:

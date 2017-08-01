@@ -42,7 +42,6 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=batch_size,
                                            shuffle=True)
 
-
 gx = P()
 gz = Q()
 dxz = D()
@@ -103,6 +102,9 @@ for epoch in range(num_epochs):
         d_enc = dxz.forward(x, z_hat)
         d_gen = dxz.forward(x_hat, z)
 
+        d_enc_sum = torch.mean(d_enc)
+        d_gen_sum = torch.mean(d_gen)
+
         d_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
 
         for p in gx.parameters():
@@ -142,9 +144,10 @@ for epoch in range(num_epochs):
         g_optimizer.step()
 
         if (i) % log_step == 0:
-            print('Epoch [%d/%d], Step[%d/%d], d_loss: %.4f, g_loss: %.4f '
-                  % (epoch + 1, num_epochs, i + 1, total_step,
-                     g_loss.data[0], d_loss.data[0]))
+            print(
+                'Epoch [%d/%d], Step[%d/%d], d_loss: %.4f, g_loss: %.4f, d_enc: %.4f, d_gen: %.4f '
+                % (epoch + 1, num_epochs, i + 1, total_step,
+                   g_loss.data[0], d_loss.data[0], d_enc_sum.data[0], d_gen_sum.data[0]))
 
         # save the sampled images
         if (i) % sample_step == 0:
