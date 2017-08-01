@@ -89,6 +89,8 @@ total_step = len(train_loader)
 # zeros_label = Variable(torch.zeros(batch_size))
 
 for epoch in range(num_epochs):
+    gx.train(), gz.train()
+    dxz.train()
     for i, (x, _) in enumerate(train_loader):
 
         x = to_variable(x)

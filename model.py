@@ -49,8 +49,7 @@ def linear(l_in, l_out, bn=True):
     return nn.Sequential(*layers)
 
 
-# gen relu
-# gen tanh
+# gx
 class P(nn.Module):
     def __init__(self, d=16):
         super(P, self).__init__()
@@ -75,11 +74,12 @@ class P(nn.Module):
         # print("p shape ", out.size())
         out = F.leaky_relu(self.deconv3_bn(self.deconv3(out)))
         # print("p shape here ", out.size())
-        out = F.tanh(self.deconv4(out))
+        out = F.sigmoid(self.deconv4(out))
         # print("p shape out", out.size())
         return out
 
 
+# gz
 class Q(nn.Module):
     def __init__(self, d=16):
         super(Q, self).__init__()
@@ -89,13 +89,10 @@ class Q(nn.Module):
         self.conv2_bn = nn.BatchNorm2d(d * 4)
         self.conv3 = nn.Conv2d(d * 4, d * 8, 4, 2, 1)
         self.conv3_bn = nn.BatchNorm2d(d * 8)
+        self.conv4 = nn.Conv2d(d * 8, d * 8, 5, 2, 1)
 
-        self.mu = nn.Conv2d(d * 8, z_dim, 4, 1, 0)
-        self.sigma = nn.Conv2d(d * 8, z_dim, 4, 1, 0)
-
-        # self.conv4 = nn.Conv2d(d * 8, z_dim//2, 4, 1, 0)
-        # self.conv4_bn = nn.BatchNorm2d(z_dim//2)
-
+        self.mu = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
+        self.sigma = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
         self.weight_init(mean=0.0, std=0.02)
 
     def get_e(self):
@@ -106,15 +103,15 @@ class Q(nn.Module):
             normal_init(self._modules[m], mean, std)
 
     def forward(self, x):
-        # print("q shape in ", x.size())
         out = F.leaky_relu(self.conv1_bn(self.conv1(x)))
-        # print("q shape 1 ", out.size())
         out = F.leaky_relu(self.conv2_bn(self.conv2(out)))
-        # print("q shape 2 ", out.size())
         out = F.leaky_relu(self.conv3_bn(self.conv3(out)))
-        # print("q shape 3 ", out.size())
+        out = self.conv4(out)
+        # print("out: ", out.size())
         mu = self.mu(out)
+        # print("mu: ", mu.size())
         sig = self.sigma(out)
+        # print("sig: ", sig.size())
         e = Variable(self.get_e())
         e.requires_grad = False
         log_sig = torch.exp(sig / 2) * e
@@ -183,7 +180,7 @@ class D(nn.Module):
         # print("dxz input : ", dxz.size())
         dxz = F.leaky_relu(self.dxz_conv2(dxz))
         # print("dxz input : ", dxz.size())
-        dxz = F.leaky_relu(self.dxz_conv3(dxz))
+        dxz = F.sigmoid(self.dxz_conv3(dxz))
         # print("dxz out : ", dxz.size())
 
         return dxz
