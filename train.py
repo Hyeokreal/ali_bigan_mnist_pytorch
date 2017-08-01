@@ -102,7 +102,6 @@ for epoch in range(num_epochs):
         d_gen = dxz.forward(x_hat, z)
 
         d_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
-        g_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
 
         for p in gx.parameters():
             p.requires_grad = False
@@ -111,10 +110,22 @@ for epoch in range(num_epochs):
         for p in dxz.parameters():
             p.requires_grad = True
 
+        # dxz.zero_grad()
         d_optimizer.zero_grad()
         d_loss.backward()
         d_optimizer.step()
 
+        z = to_variable(torch.randn(batch_size, z_dim))
+        z = z.view(-1, z_dim, 1, 1)
+
+        x_hat = gx.forward(z)
+        z_hat = gz.forward(x)
+
+        d_enc = dxz.forward(x, z_hat)
+        d_gen = dxz.forward(x_hat, z)
+
+        g_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+
         for p in gx.parameters():
             p.requires_grad = True
         for p in gz.parameters():
@@ -122,6 +133,8 @@ for epoch in range(num_epochs):
         for p in dxz.parameters():
             p.requires_grad = False
 
+        # gx.zero_grad()
+        # gz.zero_grad()
         g_optimizer.zero_grad()
         g_loss.backward()
         g_optimizer.step()
