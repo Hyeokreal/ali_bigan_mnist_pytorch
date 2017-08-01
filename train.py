@@ -187,20 +187,27 @@ for epoch in range(num_epochs):
                 % (epoch + 1, num_epochs, i + 1, total_step,
                    g_loss.data[0], d_loss.data[0], d_enc_sum.data[0], d_gen_sum.data[0]))
 
+        # save real images
+        if (i) % sample_step == 0:
+            torchvision.utils.save_image(denorm(x.data),
+                                         os.path.join(sample_path,
+                                                      'real_samples-%d-%d.png' % (
+                                                          epoch + 1, i + 1)))
+
+
         # save the sampled images
         if (i) % sample_step == 0:
-            fake_images = gx.forward(fixed_noise)
-            torchvision.utils.save_image(denorm(fake_images.data),
+            torchvision.utils.save_image(denorm(x_hat.data),
                                          os.path.join(sample_path,
                                                       'fake_samples-%d-%d.png' % (
                                                           epoch + 1, i + 1)))
 
         # save the sampled images recon
         if (i) % sample_step == 0:
-            fake_z = gz.forward(x)
-            mu, sigma = fake_z[:, :z_dim], fake_z[:, z_dim:].exp()
-            fake_z = mu + sigma * noise
-            fake_x = gx.forward(fake_z)
+            # fake_z = gz.forward(x)
+            # mu, sigma = fake_z[:, :z_dim], fake_z[:, z_dim:].exp()
+            # fake_z = mu + sigma * noise
+            fake_x = gx.forward(z_hat)
 
             torchvision.utils.save_image(denorm(fake_x.data),
                                          os.path.join(sample_path,

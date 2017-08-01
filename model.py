@@ -86,7 +86,7 @@ class P(nn.Module):
         # print("p shape ", out.size())
         out = F.leaky_relu(self.deconv3_bn(self.deconv3(out)))
         # print("p shape here ", out.size())
-        out = F.sigmoid(self.deconv4(out))
+        out = F.tanh(self.deconv4(out))
         # print("p shape out", out.size())
         return out
 
@@ -172,7 +172,8 @@ class D(nn.Module):
 
         self.dxz_conv1 = nn.Conv2d(512, 512, 1, 1, 0)
         self.dxz_conv2 = nn.Conv2d(512, 512, 1, 1, 0)
-        self.dxz_conv3 = nn.Conv2d(512, 1, 1, 1, 0)
+        self.dxz_conv3 = nn.Conv2d(512, 512, 1, 1, 0)
+        self.dxz_conv4 = nn.Conv2d(512, 1, 1, 1, 0)
 
         # for m in self.modules():
         #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -212,8 +213,9 @@ class D(nn.Module):
         dxz = F.leaky_relu(self.dxz_conv1(xz), 0.2)
         # print("dxz input : ", dxz.size())
         dxz = F.leaky_relu(self.dxz_conv2(dxz), 0.2)
+        dxz = F.leaky_relu(self.dxz_conv3(dxz), 0.2)
         # print("dxz input : ", dxz.size())
-        dxz = self.dxz_conv3(dxz)
+        dxz = self.dxz_conv4(dxz)
         # print("dxz out : ", dxz.size())
 
         return F.sigmoid(dxz)
