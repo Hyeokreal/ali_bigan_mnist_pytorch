@@ -20,6 +20,16 @@ sample_step = 200
 sample_path = './samples'
 model_path = './models'
 
+'''
+began implement
+'''
+lamda = 1e-3
+k_d = 0
+k_g = 0
+gamma = 0.5
+
+
+
 if not os.path.isdir(sample_path):
     os.mkdir(sample_path)
 
@@ -90,44 +100,6 @@ total_step = len(train_loader)
 # ones_label = Variable(torch.ones(batch_size))
 # zeros_label = Variable(torch.zeros(batch_size))
 
-'''
-def compute_loss(batch_size, d_loss=False):
-    z_hat = netGz(x)
-    mu, sigma = z_hat[:, :opt.nz], z_hat[:, opt.nz:].exp()
-
-    z_hat = mu + sigma * noise.expand_as(sigma)
-    x_hat = netGx(z)
-
-    data_preds = netDxz(torch.cat([netDx(x), netDz(z_hat)], 1)) + eps
-    sample_preds = netDxz(torch.cat([netDx(x_hat), netDz(z)], 1)) + eps
-
-    if d_loss:
-        # discriminator loss
-        loss = torch.mean(softplus(-data_preds) + softplus(sample_preds))
-    else:
-        # generator loss
-        loss = torch.mean(softplus(data_preds) + softplus(-sample_preds))
-
-    return lossdef compute_loss(batch_size, d_loss=False):
-    z_hat = netGz(x)
-    mu, sigma = z_hat[:, :opt.nz], z_hat[:, opt.nz:].exp()
-
-    z_hat = mu + sigma * noise.expand_as(sigma)
-    x_hat = netGx(z)
-
-    data_preds = netDxz(torch.cat([netDx(x), netDz(z_hat)], 1)) + eps
-    sample_preds = netDxz(torch.cat([netDx(x_hat), netDz(z)], 1)) + eps
-
-    if d_loss:
-        # discriminator loss
-        loss = torch.mean(softplus(-data_preds) + softplus(sample_preds))
-    else:
-        # generator loss
-        loss = torch.mean(softplus(data_preds) + softplus(-sample_preds))
-
-    return loss
-'''
-
 for epoch in range(num_epochs):
 
     for i, (x, _) in enumerate(train_loader):
@@ -149,9 +121,15 @@ for epoch in range(num_epochs):
         d_enc_sum = torch.mean(d_enc)
         d_gen_sum = torch.mean(d_gen)
 
-        # d_loss = torch.mean(softplus(-d_enc) + softplus(d_gen))
+        k_d = k_d + lamda * (gamma * d_enc - d_gen)
+        # k_d = k_d.data[0]
 
-        d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+        k_g = k_g + lamda * ((1/gamma) * d_gen - d_enc)
+        # k_g = k_g.data[0]
+
+        # d_loss = torch.mean(softplus(-d_enc) + softplus(d_gen))
+        # d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+        d_loss = torch.mean(d_enc - k_d * d_gen)
 
         for p in gx.parameters():
             p.requires_grad = False
@@ -166,7 +144,9 @@ for epoch in range(num_epochs):
         d_optimizer.step()
 
         # g_loss = torch.mean(softplus(d_enc) + softplus(-d_gen))
-        g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
+        # g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
+
+        g_loss = torch.mean(d_gen - k_g * d_enc)
 
         for p in gx.parameters():
             p.requires_grad = True
@@ -178,7 +158,7 @@ for epoch in range(num_epochs):
         gx.zero_grad()
         gz.zero_grad()
         # g_optimizer.zero_grad()
-        g_loss.backward()
+        g_loss.backward(retain_variables=True)
         g_optimizer.step()
 
         if (i) % log_step == 0:

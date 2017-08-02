@@ -215,10 +215,10 @@ class D(nn.Module):
         dxz = F.leaky_relu(self.dxz_conv2(dxz), 0.2)
         dxz = F.leaky_relu(self.dxz_conv3(dxz), 0.2)
         # print("dxz input : ", dxz.size())
-        dxz = self.dxz_conv4(dxz)
+        dxz = F.sigmoid(self.dxz_conv4(dxz))
         # print("dxz out : ", dxz.size())
 
-        return F.sigmoid(dxz)
+        return dxz
 
 
 '''
