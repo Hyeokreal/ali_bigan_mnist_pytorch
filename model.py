@@ -62,16 +62,21 @@ class P(nn.Module):
         self.deconv2_bn = nn.BatchNorm2d(d * 4)
         self.deconv3 = nn.ConvTranspose2d(d * 4, d * 2, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d * 2)
-        self.deconv4 = nn.ConvTranspose2d(d * 2, 1, 4, 2, 1)
+        # self.deconv4 = nn.ConvTranspose2d(d * 2, 1, 4, 2, 1)
+        self.deconv4 = nn.ConvTranspose2d(d * 2, d * 2, 4, 2, 1)
+        self.deconv4_bn = nn.BatchNorm2d(d * 2)
+        self.deconv5 = nn.ConvTranspose2d(d * 2, d * 2, 1, 1, 0)
+        self.deconv5_bn = nn.BatchNorm2d(d * 2)
+        self.conv_out = nn.Conv2d(d * 2, 1, 1, 1)
 
-        self.weight_init(mean=0.0, std=0.02)
+        # self.weight_init(mean=0.0, std=0.02)
 
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        #         m.weight.data.normal_(0.0, std)
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.normal_(1.0, std)
-        #         m.bias.data.zero_()
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
 
 
     def weight_init(self, mean, std):
@@ -79,14 +84,19 @@ class P(nn.Module):
             normal_init(self._modules[m], mean, std)
 
     def forward(self, z):
+        # print("generating x -image size variation")
         # print("p shape in ", z.size())
         out = F.leaky_relu(self.deconv1_bn(self.deconv1(z)))
         # print("p shape ", out.size())
         out = F.leaky_relu(self.deconv2_bn(self.deconv2(out)))
         # print("p shape ", out.size())
         out = F.leaky_relu(self.deconv3_bn(self.deconv3(out)))
-        # print("p shape here ", out.size())
-        out = F.tanh(self.deconv4(out))
+        # print("p shape ", out.size())
+        out = F.leaky_relu(self.deconv4_bn(self.deconv4(out)))
+        # print("p shape", out.size())
+        out = F.leaky_relu(self.deconv5_bn(self.deconv5(out)))
+        # print("p shape", out.size())
+        out = F.sigmoid(self.conv_out(out))
         # print("p shape out", out.size())
         return out
 
@@ -102,20 +112,21 @@ class Q(nn.Module):
         self.conv3 = nn.Conv2d(d * 4, d * 8, 4, 2, 1)
         self.conv3_bn = nn.BatchNorm2d(d * 8)
         self.conv4 = nn.Conv2d(d * 8, z_dim * 2, 5, 2, 1)
-        # self.conv4_bn = nn.BatchNorm2d(z_dim * 8)
-        # self.conv5 = nn.Conv2d()
+        self.conv4_bn = nn.BatchNorm2d(z_dim * 2)
+        self.conv5 = nn.Conv2d(z_dim * 2, z_dim * 2, 1, 1, 0)
+        # self.conv5_bn = nn.BatchNorm2d(z_dim * 2, z_dim * 2, 1, 1, 0)
 
         # self.mu = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
         # self.sigma = nn.Conv2d(d * 8, z_dim, 1, 1, 0)
 
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        #         m.weight.data.normal_(0.0, std)
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.normal_(1.0, std)
-        #         m.bias.data.zero_()
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
 
-        self.weight_init(mean=0.0, std=0.02)
+        # self.weight_init(mean=0.0, std=0.02)
 
     def get_e(self):
         return torch.randn([batch, z_dim, 1, 1])
@@ -132,7 +143,11 @@ class Q(nn.Module):
         # print("q shape: ", out.size())
         out = F.leaky_relu(self.conv3_bn(self.conv3(out)))
         # print("q shape: ", out.size())
-        out = self.conv4(out)
+        out = F.leaky_relu(self.conv4_bn(self.conv4(out)))
+        # print("q shape: ", out.size())
+        out = self.conv5(out)
+        # print("q shape: ", out.size())
+
         # print("q shape: ", out.size())
         # mu = self.mu(out)
         # print("mu: ", mu.size())
@@ -172,16 +187,16 @@ class D(nn.Module):
 
         self.dxz_conv1 = nn.Conv2d(512, 512, 1, 1, 0)
         self.dxz_conv2 = nn.Conv2d(512, 512, 1, 1, 0)
-        self.dxz_conv3 = nn.Conv2d(512, 512, 1, 1, 0)
+        # self.dxz_conv3 = nn.Conv2d(512, 512, 1, 1, 0)
         self.dxz_conv4 = nn.Conv2d(512, 1, 1, 1, 0)
 
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        #         m.weight.data.normal_(0.0, std)
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.normal_(1.0, std)
-        #         m.bias.data.zero_()
-        self.weight_init(mean=0.0, std=0.02)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, std)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(1.0, std)
+                m.bias.data.zero_()
+        # self.weight_init(mean=0.0, std=0.02)
 
     def weight_init(self, mean, std):
         for m in self._modules:
@@ -213,9 +228,10 @@ class D(nn.Module):
         dxz = F.leaky_relu(self.dxz_conv1(xz), 0.2)
         # print("dxz input : ", dxz.size())
         dxz = F.leaky_relu(self.dxz_conv2(dxz), 0.2)
-        dxz = F.leaky_relu(self.dxz_conv3(dxz), 0.2)
+        # dxz = F.leaky_relu(self.dxz_conv3(dxz), 0.2)
         # print("dxz input : ", dxz.size())
         dxz = F.sigmoid(self.dxz_conv4(dxz))
+        # dxz = self.dxz_conv4(dxz)
         # print("dxz out : ", dxz.size())
 
         return dxz

@@ -13,7 +13,7 @@ batch_size = 100
 z_dim = 100
 x_dim = 32
 sample_size = 100
-glr = 0.0001
+glr = 0.0002
 dlr = 0.0001
 log_step = 1
 sample_step = 200
@@ -121,15 +121,15 @@ for epoch in range(num_epochs):
         d_enc_sum = torch.mean(d_enc)
         d_gen_sum = torch.mean(d_gen)
 
-        k_d = k_d + lamda * (gamma * d_enc - d_gen)
+        # k_d = k_d + lamda * (gamma * d_enc - d_gen)
         # k_d = k_d.data[0]
 
-        k_g = k_g + lamda * ((1/gamma) * d_gen - d_enc)
+        # k_g = k_g + lamda * ((1/gamma) * d_gen - d_enc)
         # k_g = k_g.data[0]
 
         # d_loss = torch.mean(softplus(-d_enc) + softplus(d_gen))
-        # d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
-        d_loss = torch.mean(d_enc - k_d * d_gen)
+        d_loss = 0.5 * torch.mean(d_gen ** 2 + (1 - d_enc) ** 2)
+        # d_loss = torch.mean(d_enc - k_d * d_gen)
 
         for p in gx.parameters():
             p.requires_grad = False
@@ -144,9 +144,9 @@ for epoch in range(num_epochs):
         d_optimizer.step()
 
         # g_loss = torch.mean(softplus(d_enc) + softplus(-d_gen))
-        # g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
+        g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
 
-        g_loss = torch.mean(d_gen - k_g * d_enc)
+        # g_loss = torch.mean(d_gen - k_g * d_enc)
 
         for p in gx.parameters():
             p.requires_grad = True
@@ -158,7 +158,7 @@ for epoch in range(num_epochs):
         gx.zero_grad()
         gz.zero_grad()
         # g_optimizer.zero_grad()
-        g_loss.backward(retain_variables=True)
+        g_loss.backward()
         g_optimizer.step()
 
         if (i) % log_step == 0:
