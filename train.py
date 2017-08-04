@@ -132,8 +132,18 @@ for epoch in range(num_epochs):
 
         dxz.zero_grad()
         # d_optimizer.zero_grad()
-        d_loss.backward(retain_variables=True)
+        d_loss.backward()
         d_optimizer.step()
+
+        # here
+
+        x_hat = gx.forward(z)
+        z_hat = gz.forward(x)
+        mu, sigma = z_hat[:, :z_dim], z_hat[:, z_dim:].exp()
+        z_hat = mu + sigma * noise
+
+        d_enc = dxz.forward(x, z_hat)
+        d_gen = dxz.forward(x_hat, z)
 
         # g_loss = torch.mean(softplus(d_enc) + softplus(-d_gen))
         g_loss = 0.5 * torch.mean(d_enc ** 2 + (1 - d_gen) ** 2)
