@@ -60,7 +60,7 @@ g_param = chain(gx.parameters(), gz.parameters())
 d_param = dxz.parameters()
 
 g_optimizer = optim.Adam(g_param, glr, betas=(0.5, 0.999))
-d_optimizer = optim.Adam(d_param, glr, betas=(0.5, 0.999))
+d_optimizer = optim.Adam(d_param, dlr, betas=(0.5, 0.999))
 
 
 def to_variable(x):
