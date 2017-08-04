@@ -75,14 +75,6 @@ def to_data(x):
         x = x.cpu()
     return x.data
 
-
-def reset_grad():
-    """Zero the gradient buffers."""
-    gx.zero_grad()
-    gz.zero_grad()
-    dxz.zero_grad()
-
-
 def denorm(x):
     """Convert range (-1, 1) to (0, 1)"""
     out = (x + 1) / 2
@@ -169,25 +161,33 @@ for epoch in range(num_epochs):
 
         # save real images
         if (i) % sample_step == 0:
-            torchvision.utils.save_image(denorm(x.data),
+            torchvision.utils.save_image(x.data,
                                          os.path.join(sample_path,
-                                                      'real_samples-%d-%d.png' % (
+                                                      'real_samples_xdenorm-%d-%d.png' % (
                                                           epoch + 1, i + 1)))
 
 
         # save the sampled images
         if (i) % sample_step == 0:
+            out_images = gx.forward(fixed_noise)
             torchvision.utils.save_image(denorm(x_hat.data),
                                          os.path.join(sample_path,
-                                                      'fake_samples-%d-%d.png' % (
+                                                      'fake_samples_denorm-%d-%d.png' % (
+                                                          epoch + 1, i + 1)))
+
+        if (i) % sample_step == 0:
+            out_images = gx.forward(fixed_noise)
+            torchvision.utils.save_image(x_hat.data,
+                                         os.path.join(sample_path,
+                                                      'xdenorm-fake-%d-%d.png' % (
                                                           epoch + 1, i + 1)))
 
         # save the sampled images recon
         if (i) % sample_step == 0:
-            # fake_z = gz.forward(x)
-            # mu, sigma = fake_z[:, :z_dim], fake_z[:, z_dim:].exp()
-            # fake_z = mu + sigma * noise
-            fake_x = gx.forward(z_hat)
+            fake_z = gz.forward(x)
+            mu, sigma = fake_z[:, :z_dim], fake_z[:, z_dim:].exp()
+            fake_z = mu + sigma * noise
+            fake_x = gx.forward(fake_z)
 
             torchvision.utils.save_image(denorm(fake_x.data),
                                          os.path.join(sample_path,
