@@ -94,7 +94,7 @@ class P(nn.Module):
         # print("p shape", out.size())
         # out = F.leaky_relu(self.deconv5_bn(self.deconv5(out)))
         # print("p shape", out.size())
-        out = F.sigmoid(self.conv_out(out))
+        out = F.tanh(self.conv_out(out))
         # print("p shape out", out.size())
         return out
 
