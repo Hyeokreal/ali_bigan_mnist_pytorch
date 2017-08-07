@@ -113,7 +113,7 @@ def create_mnist_gx(nz=128, ngpu=0):
         ['convt2d', 4, 2, 32, False, True, 0.0, 'leaky_relu'],
         ['convt2d', 5, 1, 32, False, True, 0.0, 'leaky_relu'],
         ['convt2d', 1, 1, 32, True, True, 0.0, 'leaky_relu'],
-        ['conv2d', 1, 1, 1, False, False, 0.0, 'sigmoid'],
+        ['conv2d', 1, 1, 1, False, False, 0.0, 'tanh'],
     ]
     return CNN(nz, 1, hparams, ngpu)
 
